@@ -1,0 +1,17 @@
+{
+  "name": "typeahead-search",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/common": "^16.2.0",
+    "@angular/core": "^16.2.0"
+  },
+  "dependencies": {
+    "@angular/forms": "^17.3.7",
+    "ng-packagr": "^17.3.0",
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@angular-devkit/core": "^17.3.7"
+  }
+}

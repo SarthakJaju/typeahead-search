@@ -1,0 +1,8 @@
+<ng-container *ngIf="showProcessOverlay else templateContent">
+    <div class="process-overlay-spinner-container">
+        <span class="loader"></span>
+    </div>
+</ng-container>
+<ng-template #templateContent>
+    <ng-content></ng-content>
+</ng-template>

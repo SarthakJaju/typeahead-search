@@ -396,3 +396,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+.angular
+.editorconfig
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/tasks.json
+dist

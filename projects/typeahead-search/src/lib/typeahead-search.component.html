@@ -1,0 +1,41 @@
+<div class="typeahead-search-container {{ styleClass }}">
+    <div class="typeahead-search-box" [ngClass]="{ 'error-border': highlightError && isInvalid}">
+        <ul>
+            <li *ngFor="let item of selectedItems; let index = index" class="typeahead-selected-item-chip">
+                <div>{{ item?.label }}</div>
+                <button *ngIf="!isDisabled" (click)="removeSelectedItem( index )">
+                    <span>&#x2715;</span>
+                </button>
+            </li>
+        </ul>
+        <input  
+                type="text"
+                class="typeahead-searchbox" 
+                [disabled]="isDisabled"
+                [placeholder]="placeholder" 
+                [(ngModel)]="searchText"
+                (ngModelChange)="onInputChange()"
+                (keyup.enter)="onEnterKeyPress( searchText )"
+                (keyup.backspace)="onBackspacePress($event)" />
+    </div>
+    <ng-container>
+        <div #resultsContainer *ngIf="showProcessOverlay || showResultsPopup" class="lookup-results-container">
+            <lib-typeahead-process-overlay-spinner [showProcessOverlay]=showProcessOverlay>
+                <ng-container  *ngIf="(searchResults?.length > 0) else showNoResultFoundMessage">
+                    <div *ngFor="let result of searchResults; let index = index" class="lookup-result" 
+                        (click)="addSelectedItem( result, retainResultAfterSelection )">
+                            <div> {{ result?.label }} </div>
+                            <div *ngIf="result?.metadata?.isCached" class="cached-indicator">
+                                <img [src]="'data:image/jpg;base64,' + cacheIconBase64" class="icon-size"/>
+                            </div>
+                    </div>
+                </ng-container>
+                <ng-template #showNoResultFoundMessage >
+                    <div class="typeahead-search-no-result-banner">
+                        <span>No Results Found</span>
+                    </div>
+                </ng-template>
+            </lib-typeahead-process-overlay-spinner>
+        </div>
+    </ng-container>
+</div>
