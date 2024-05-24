@@ -5,7 +5,7 @@ import { TypeaheadSearchService } from './typeahead-search.service';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR, NgControl, ReactiveFormsModule } from '@angular/forms';
 import { TypeaheadProcessOverlaySpinnerComponent } from './typeahead-process-overlay-spinner/typeahead-process-overlay-spinner.component';
-import { SearchDataModel } from './model/typeahead-search-dropdown-data.model';
+import { SearchAPIConfig, SearchDataModel } from './model/typeahead-search-dropdown-data.model';
 import { CacheServiceService } from './cache-service.service';
 
 @Component({
@@ -30,22 +30,21 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
   $unsubscribeInputChange: Subject<any> = new Subject();
   $unsubscribeNotifier: Subject<any> = new Subject();
 
-  @Input() label: string;
   @Input() styleClass: string;
   @Input() debounceDuration: number = 500;
   @Input() highlightError: boolean = true;
   @Input() isDisabled: boolean = false;
-  @Input() enableCaching: boolean = true;
-  @Input() onEnterValidatorFn: Function;
+  @Input() caching: boolean = true;
+  @Input() searchTextValidatorFn: Function;
   @Input() maxSelectionLimit: number;
   @Input() placeholder: string = 'Enter text to search';
   @Input() retainResultAfterSelection: boolean = false;
   @Input({ required: false }) set ngModel( data: SearchDataModel[]) {
     this.selectedItems = this.service.isEmpty(data) ? [] : data;
   };
-  @Input({ required: true }) lookupApiConfig: { path: string, queryParam: string };
-  @Input({ required: true }) dataProcessFn: Function;
-  @Input({ required: true }) allowTypedInEntry: boolean = false;
+  @Input({ required: true }) searchAPI: SearchAPIConfig;
+  @Input({ required: true }) searchResponseProcessFn: Function;
+  @Input({ required: true }) addSearchTextOnEnterkeyPress: boolean = false;
 
   @Output() ngModelChange: EventEmitter<SearchDataModel[]> = new EventEmitter();
   @Output() onRecordAdd: EventEmitter<SearchDataModel> = new EventEmitter();
@@ -95,7 +94,7 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
       debounce( () => timer( this.debounceDuration ).pipe( takeUntil(this.$unsubscribeInputChange) ) ),
       takeUntil( this.$unsubscribeNotifier ), 
     ).subscribe( ( searchText: string ) => {
-      const isResultFoundInCache: boolean = this.enableCaching && this.cacheService.isResultCached( searchText );
+      const isResultFoundInCache: boolean = this.caching && this.cacheService.isResultCached( searchText );
       isResultFoundInCache ? this.retrieveSearchResultsFromCache( searchText ) : this.fetchSearchResults( searchText );
     })
   }
@@ -113,10 +112,10 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
     this.subscription?.unsubscribe();
     this.showProcessOverlay = true;
     this.cd.detectChanges();
-    const url: string = `${ this.lookupApiConfig?.path }?${this.lookupApiConfig?.queryParam}=${searchString}`;
+    const url: string = `${ this.searchAPI?.path }?${this.searchAPI?.queryParam}=${searchString}`;
     this.subscription = this.http.get<any>( url ) .subscribe( results => {
-      this.searchResults = this.dataProcessFn(results);
-      if ( this.enableCaching ) {
+      this.searchResults = this.searchResponseProcessFn(results);
+      if ( this.caching ) {
         this.cacheService.cacheResults( searchString, this.searchResults );
       }
     }, error => {}, () => {
@@ -127,12 +126,12 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
   } 
 
   onEnterKeyPress( searchText: string ) {
-    if ( !this.allowTypedInEntry || this.service.isEmpty( searchText ) ) { return; };
+    if ( !this.addSearchTextOnEnterkeyPress || this.service.isEmpty( searchText ) ) { return; };
     function prepareSearchModelData( text: string ): SearchDataModel {
       return { label: text, value: text, metadata: {} };
     }
-    if ( typeof this.onEnterValidatorFn === 'function' && this.onEnterValidatorFn ) {
-      const isSearchTextValid: boolean = this.onEnterValidatorFn( searchText );
+    if ( typeof this.searchTextValidatorFn === 'function' && this.searchTextValidatorFn ) {
+      const isSearchTextValid: boolean = this.searchTextValidatorFn( searchText );
       if ( isSearchTextValid ) {
         this.addSelectedItem( prepareSearchModelData( searchText ), false );
         this.retainResultAfterSelection = false;

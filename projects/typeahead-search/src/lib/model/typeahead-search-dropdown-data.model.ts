@@ -6,3 +6,8 @@ export interface SearchDataModel {
         [key: string]: any
     }
 }
+
+export interface SearchAPIConfig { 
+    path: string, 
+    queryParam: string 
+}
