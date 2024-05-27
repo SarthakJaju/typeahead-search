@@ -41,7 +41,7 @@ $secondary-text-color: #6c757d;
             margin: 0;
             padding: 0;
 
-            .typeahead-selected-item-chip {
+            li {
                 display: flex;
                 flex-direction: row;
                 list-style-type: none;
@@ -83,13 +83,13 @@ $secondary-text-color: #6c757d;
 
             }
 
-            .typeahead-selected-item-chip:hover {
+            li:hover {
                 background-color: #ccc;
                 transition: $transition;
             }
         }
 
-        .typeahead-searchbox {
+        input {
             height: 25px;
             min-width: 50px;
             border: none;
@@ -98,7 +98,7 @@ $secondary-text-color: #6c757d;
             flex: 1;
         }
         
-        .typeahead-searchbox:focus-visible {
+        input:focus-visible {
             outline: none;
         }
 

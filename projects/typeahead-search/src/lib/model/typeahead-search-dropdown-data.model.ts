@@ -1,3 +1,5 @@
+import { HttpHeaders } from "@angular/common/http";
+
 export interface SearchDataModel {
     label: string;
     value: string | number;
@@ -9,5 +11,6 @@ export interface SearchDataModel {
 
 export interface SearchAPIConfig { 
     path: string, 
-    queryParam: string 
+    queryParam: string,
+    options?: object
 }

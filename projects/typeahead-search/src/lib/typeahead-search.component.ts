@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Optional, Output, Self, ViewChild, forwardRef,  } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject, Subscription, debounce, distinctUntilChanged, map, takeUntil, timer } from 'rxjs';
+import { Subject, Subscription, debounce, takeUntil, tap, timer } from 'rxjs';
 import { TypeaheadSearchService } from './typeahead-search.service';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR, NgControl, ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { ControlValueAccessor, FormsModule, NgControl, ReactiveFormsModule } from '@angular/forms';
 import { TypeaheadProcessOverlaySpinnerComponent } from './typeahead-process-overlay-spinner/typeahead-process-overlay-spinner.component';
 import { SearchAPIConfig, SearchDataModel } from './model/typeahead-search-dropdown-data.model';
 import { CacheServiceService } from './cache-service.service';
@@ -37,14 +37,15 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
   @Input() caching: boolean = true;
   @Input() searchTextValidatorFn: Function;
   @Input() maxSelectionLimit: number;
-  @Input() placeholder: string = 'Enter text to search';
+  @Input() placeholder: string = 'Search';
   @Input() retainResultAfterSelection: boolean = false;
+  @Input() clearCacheTimer: number = 6000;
   @Input({ required: false }) set ngModel( data: SearchDataModel[]) {
     this.selectedItems = this.service.isEmpty(data) ? [] : data;
   };
   @Input({ required: true }) searchAPI: SearchAPIConfig;
   @Input({ required: true }) searchResponseProcessFn: Function;
-  @Input({ required: true }) addSearchTextOnEnterkeyPress: boolean = false;
+  @Input({ required: false }) addSearchTextOnEnterkeyPress: boolean = false;
 
   @Output() ngModelChange: EventEmitter<SearchDataModel[]> = new EventEmitter();
   @Output() onRecordAdd: EventEmitter<SearchDataModel> = new EventEmitter();
@@ -56,6 +57,7 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
   public propagateChange: any = () => {};
   public propagateTouched: any = () => {};
 
+  // Listening click => To close results popup iff click outside 
   @HostListener('document: click', [ '$event' ])
   listenUserClick(event: Event) {
     if ( !this.resultsContainer?.nativeElement.contains( event?.target ) ) {
@@ -71,12 +73,12 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
     return this.typeaheadSearchCtrl ? !this.typeaheadSearchCtrl?.pristine && this.typeaheadSearchCtrl?.invalid : false;
   }
 
-  constructor( private http: HttpClient, 
-               private service: TypeaheadSearchService,
+  constructor( private service: TypeaheadSearchService,
                private cacheService: CacheServiceService,
                private cd: ChangeDetectorRef,
                @Self() @Optional() private typeaheadSearchCtrl: NgControl ) {
     if ( this.typeaheadSearchCtrl ) {
+      // This will get set if host component uses reactive form approach. 
       this.typeaheadSearchCtrl.valueAccessor = this;
     }
   }
@@ -91,38 +93,26 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
 
   private listenInputChange() {
     this.$searchBoxText.asObservable().pipe(
+      // Here piped debounce timer() so that to cancel the emission of debounced observable
       debounce( () => timer( this.debounceDuration ).pipe( takeUntil(this.$unsubscribeInputChange) ) ),
-      takeUntil( this.$unsubscribeNotifier ), 
+      takeUntil( this.$unsubscribeNotifier ),
+      tap(() => this.subscription?.unsubscribe()) 
     ).subscribe( ( searchText: string ) => {
-      const isResultFoundInCache: boolean = this.caching && this.cacheService.isResultCached( searchText );
-      isResultFoundInCache ? this.retrieveSearchResultsFromCache( searchText ) : this.fetchSearchResults( searchText );
+      this.fetchResults( searchText );
     })
   }
 
-  private retrieveSearchResultsFromCache( searchString: string ) {
-    this.subscription?.unsubscribe();
-    const searchResults: SearchDataModel[] = this.cacheService.retrieveCachedResults( searchString );
-    searchResults?.forEach(result => ( result.metadata.isCached = true ) );
-    this.searchResults = searchResults;
-    this.showResultsPopup = true;
-    this.cd.detectChanges();
-  }
-
-  private fetchSearchResults( searchString: string ) {
+  private fetchResults( searchString: string ) {
     this.subscription?.unsubscribe();
     this.showProcessOverlay = true;
     this.cd.detectChanges();
-    const url: string = `${ this.searchAPI?.path }?${this.searchAPI?.queryParam}=${searchString}`;
-    this.subscription = this.http.get<any>( url ) .subscribe( results => {
-      this.searchResults = this.searchResponseProcessFn(results);
-      if ( this.caching ) {
-        this.cacheService.cacheResults( searchString, this.searchResults );
-      }
+    this.subscription = this.cacheService.fetchSearchResults( searchString, this.caching, this.searchAPI, this.searchResponseProcessFn, this.clearCacheTimer ).subscribe(results => {
+      this.searchResults = results;
     }, error => {}, () => {
       this.showProcessOverlay = false;
       this.showResultsPopup = true;
       this.cd.detectChanges();
-    });
+    })
   } 
 
   onEnterKeyPress( searchText: string ) {
@@ -164,6 +154,7 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
     this.selectedItems = [ ...this.selectedItems, selectedItem ];
     this.searchText = '';
     this.showResultsPopup = retainResultAfterSelection;
+    // In use for host component to listen changes when used with Reactive forms
     this.propagateChange( this.selectedItems );
     this.onRecordAdd.emit( selectedItem );
   }
@@ -200,6 +191,7 @@ export class TypeaheadSearchComponent implements OnInit, OnDestroy, ControlValue
   }
 
   ngOnDestroy(): void {
+    // Destroy all existing subscriptions to avoid any memory leakages
     this.$unsubscribeNotifier.next(null);
     this.$unsubscribeNotifier.complete();
     this.unsubscribeInputChangeEvent();

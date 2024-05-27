@@ -1,7 +1,7 @@
 <div class="typeahead-search-container {{ styleClass }}">
     <div class="typeahead-search-box" [ngClass]="{ 'error-border': highlightError && isInvalid}">
         <ul>
-            <li *ngFor="let item of selectedItems; let index = index" class="typeahead-selected-item-chip">
+            <li *ngFor="let item of selectedItems; let index = index">
                 <div>{{ item?.label }}</div>
                 <button *ngIf="!isDisabled" (click)="removeSelectedItem( index )">
                     <span>&#x2715;</span>
@@ -9,14 +9,13 @@
             </li>
         </ul>
         <input  
-                type="text"
-                class="typeahead-searchbox" 
-                [disabled]="isDisabled"
-                [placeholder]="placeholder" 
-                [(ngModel)]="searchText"
-                (ngModelChange)="onInputChange()"
-                (keyup.enter)="onEnterKeyPress( searchText )"
-                (keyup.backspace)="onBackspacePress($event)" />
+            type="text" 
+            [disabled]="isDisabled"
+            [placeholder]="placeholder" 
+            [(ngModel)]="searchText"
+            (ngModelChange)="onInputChange()"
+            (keyup.enter)="onEnterKeyPress( searchText )"
+            (keyup.backspace)="onBackspacePress($event)" />
     </div>
     <ng-container>
         <div #resultsContainer *ngIf="showProcessOverlay || showResultsPopup" class="lookup-results-container">
